@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { CLASSE_ACTIF_LABELS, STATUT_ACTIF_LABELS, DPE_COLORS } from '@/types'
+import { CLASSE_ACTIF_LABELS, STATUT_ACTIF_LABELS, DPE_COLORS, ClasseActif, StatutActif } from '@/types'
 import { rendementBrut, rendementNet, cashflowAnnuel } from '@/utils/finance/rendement'
 import { ArrowLeft, AlertTriangle, Pencil } from 'lucide-react'
 import Link from 'next/link'
@@ -50,11 +50,11 @@ export default async function ActifDetailPage({ params }: { params: { id: string
           <div className="flex items-start justify-between">
             <div>
               <span className="text-xs font-medium text-brand-400 bg-brand-500/10 px-2.5 py-1 rounded-md">
-                {CLASSE_ACTIF_LABELS[actif.classe_actif]}
+                {CLASSE_ACTIF_LABELS[actif.classe_actif as ClasseActif]}
               </span>
               <h2 className="text-xl font-bold text-white mt-2">{actif.nom}</h2>
               <p className="text-slate-400 text-sm">{actif.commune} ({actif.dept_code})</p>
-              <span className="text-xs text-slate-400 mt-1 inline-block">{STATUT_ACTIF_LABELS[actif.statut]}</span>
+              <span className="text-xs text-slate-400 mt-1 inline-block">{STATUT_ACTIF_LABELS[actif.statut as StatutActif]}</span>
             </div>
             {dpeColor && (
               <div className="text-center">

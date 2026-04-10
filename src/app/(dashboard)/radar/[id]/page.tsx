@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { CLASSE_ACTIF_LABELS, DPE_COLORS } from '@/types'
+import { CLASSE_ACTIF_LABELS, DPE_COLORS, ClasseActif } from '@/types'
 import { ArrowLeft, MapPin, TrendingUp, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 
@@ -27,7 +27,7 @@ export default async function OpportuniteDetailPage({ params }: { params: { id: 
         <div className="flex items-start justify-between mb-6">
           <div>
             <span className="text-xs font-medium text-brand-400 bg-brand-500/10 px-2.5 py-1 rounded-md">
-              {CLASSE_ACTIF_LABELS[opp.classe_actif]}
+              {CLASSE_ACTIF_LABELS[opp.classe_actif as ClasseActif]}
             </span>
             <h2 className="text-xl font-bold text-white mt-2">{opp.titre}</h2>
             <div className="flex items-center gap-1.5 text-slate-400 text-sm mt-1">

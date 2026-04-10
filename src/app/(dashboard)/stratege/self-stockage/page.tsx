@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { cn, formatCurrency } from '@/lib/utils'
 import { bilanSelfStockage } from '@/utils/finance/marge'
 
-function NumInput({ label, value, onChange, suffix, hint }: { label: string; value: number; onChange: (v: number) => void; suffix?: string; hint?: string }) {
+function NumInput({ label, value, onChange, suffix, hint, min, max }: { label: string; value: number; onChange: (v: number) => void; suffix?: string; hint?: string; min?: number; max?: number }) {
   return (
     <div>
       <label className="block text-xs font-medium text-slate-400 mb-1.5">

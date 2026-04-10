@@ -7,7 +7,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 import { bilanColiving } from '@/utils/finance/marge'
 import { calculTRI } from '@/utils/finance/tri'
 
-function NumInput({ label, value, onChange, suffix, hint }: { label: string; value: number; onChange: (v: number) => void; suffix?: string; hint?: string }) {
+function NumInput({ label, value, onChange, suffix, hint, min, max }: { label: string; value: number; onChange: (v: number) => void; suffix?: string; hint?: string; min?: number; max?: number }) {
   return (
     <div>
       <label className="block text-xs font-medium text-slate-400 mb-1.5">
@@ -71,7 +71,7 @@ export default function ColivingPage() {
     for (let i = 0; i < form.horizonAns; i++) flux.push(cashflowNet)
     // valeur terminale = 15x cashflow net
     flux[form.horizonAns] += cashflowNet * 15
-    try { tri = calculTRI(flux) * 100 } catch { tri = 0 }
+    try { const r = calculTRI(flux); tri = r !== null ? r * 100 : 0 } catch { tri = 0 }
   }
 
   const signal = bilan
