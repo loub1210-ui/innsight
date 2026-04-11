@@ -7,8 +7,7 @@ import { useRouter } from 'next/navigation'
 import {
   Building2,
   Radar,
-  Calculator,
-  LayoutDashboard,
+  BarChart3,
   Settings,
   LogOut,
   ChevronRight,
@@ -23,16 +22,10 @@ const navItems = [
     description: 'Opportunités hôtelières',
   },
   {
-    label: 'Stratège',
-    href: '/stratege',
-    icon: Calculator,
-    description: 'Simulateurs financiers',
-  },
-  {
-    label: 'Portfolio',
-    href: '/portfolio',
-    icon: LayoutDashboard,
-    description: 'Parc immobilier',
+    label: 'Synthétiseur',
+    href: '/synthetiseur',
+    icon: BarChart3,
+    description: 'Marché par ville',
   },
 ]
 

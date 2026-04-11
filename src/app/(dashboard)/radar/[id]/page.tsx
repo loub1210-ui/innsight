@@ -79,9 +79,9 @@ export default async function OpportuniteDetailPage({ params }: { params: { id: 
               <ExternalLink className="w-4 h-4" />Voir l&apos;annonce
             </a>
           )}
-          <Link href={`/stratege`}
+          <Link href={`/synthetiseur`}
             className="flex items-center gap-2 bg-surface-card hover:bg-surface-hover border border-surface-border text-slate-300 hover:text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
-            <TrendingUp className="w-4 h-4" />Simuler
+            <TrendingUp className="w-4 h-4" />Synthèse marché
           </Link>
         </div>
       </div>
