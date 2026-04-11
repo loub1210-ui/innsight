@@ -13,16 +13,16 @@ export interface FiltresOpportunites {
 export async function fetchOpportunites(filtres: FiltresOpportunites = {}): Promise<Opportunite[]> {
   const supabase = createClient()
   let query = supabase
-    .from('opportunites')
+    .from('opportunites_radar')
     .select('*')
-    .order('keyscore', { ascending: false })
+    .order('keyscore', { ascending: false, nullsFirst: false })
 
   if (filtres.region_code) query = query.eq('region_code', filtres.region_code)
   if (filtres.classe_actif) query = query.eq('classe_actif', filtres.classe_actif)
   if (filtres.statut) query = query.eq('statut', filtres.statut)
   if (filtres.keyscore_min) query = query.gte('keyscore', filtres.keyscore_min)
-  if (filtres.prix_max) query = query.lte('prix_affiche', filtres.prix_max)
-  if (filtres.search) query = query.ilike('titre', `%${filtres.search}%`)
+  if (filtres.prix_max) query = query.lte('prix_demande', filtres.prix_max)
+  if (filtres.search) query = query.ilike('nom', `%${filtres.search}%`)
 
   const { data, error } = await query.limit(100)
   if (error) throw error
@@ -32,7 +32,7 @@ export async function fetchOpportunites(filtres: FiltresOpportunites = {}): Prom
 export async function fetchOpportuniteById(id: string): Promise<Opportunite | null> {
   const supabase = createClient()
   const { data, error } = await supabase
-    .from('opportunites')
+    .from('opportunites_radar')
     .select('*')
     .eq('id', id)
     .single()
@@ -43,7 +43,7 @@ export async function fetchOpportuniteById(id: string): Promise<Opportunite | nu
 export async function updateOpportuniteStatut(id: string, statut: StatutOpportunite): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase
-    .from('opportunites')
+    .from('opportunites_radar')
     .update({ statut, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error

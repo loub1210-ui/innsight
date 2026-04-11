@@ -1,32 +1,42 @@
 // ─── Opportunités (RADAR) ─────────────────────────────────────────────────────
 
 export type ClasseActif =
-  | 'hotel_existant'
-  | 'hotel_distressed'
-  | 'marchand_biens'
+  | 'hotel'
+  | 'appart_hotel'
+  | 'camping'
+  | 'auberge'
+  | 'gite'
+  | 'villa'
+  | 'maison_hotes'
   | 'coliving'
   | 'self_stockage'
   | 'dark_kitchen'
   | 'parking_pl'
-  | 'camping'
+  | 'immeuble'
+  | 'autre'
 
 export type StatutOpportunite = 'nouvelle' | 'en_analyse' | 'qualifiee' | 'archivee'
 
 export interface Opportunite {
   id: string
-  titre: string
+  user_id: string
+  nom: string
   commune: string
   dept_code: string
-  region_code: string
+  region_code: string | null
+  adresse: string | null
   classe_actif: ClasseActif
-  prix_affiche: number
+  prix_demande: number | null
   surface_m2: number | null
-  keyscore: number
+  nombre_chambres: number | null
+  revpar_estime: number | null
+  taux_occupation_estime: number | null
+  dpe_classe: ClasseDPE | null
+  keyscore: number | null
+  keyscore_details: Record<string, unknown> | null
   statut: StatutOpportunite
-  decote_vs_benchmark: number | null
-  rendement_brut_estime: number | null
-  source_url: string | null
-  description: string | null
+  url_source: string | null
+  notes: string | null
   created_at: string
   updated_at: string
 }
@@ -59,6 +69,7 @@ export interface ActifPortefeuille {
   dpe_classe: ClasseDPE | null
   huwart_conforme: boolean | null
   huwart_echeance: string | null
+  notes: string | null
   created_at: string
   updated_at: string
 }
@@ -82,14 +93,19 @@ export interface BenchmarkRegional {
 // ─── Labels ───────────────────────────────────────────────────────────────────
 
 export const CLASSE_ACTIF_LABELS: Record<ClasseActif, string> = {
-  hotel_existant:   'Hôtel existant',
-  hotel_distressed: 'Hôtel distressed',
-  marchand_biens:   'Marchand de biens',
-  coliving:         'Coliving',
-  self_stockage:    'Self-stockage',
-  dark_kitchen:     'Dark Kitchen',
-  parking_pl:       'Parking PL',
-  camping:          'Camping',
+  hotel:          'Hôtel',
+  appart_hotel:   'Appart-hôtel',
+  camping:        'Camping',
+  auberge:        'Auberge',
+  gite:           'Gîte',
+  villa:          'Villa',
+  maison_hotes:   'Maison d\'hôtes',
+  coliving:       'Coliving',
+  self_stockage:  'Self-stockage',
+  dark_kitchen:   'Dark Kitchen',
+  parking_pl:     'Parking PL',
+  immeuble:       'Immeuble',
+  autre:          'Autre',
 }
 
 export const STATUT_ACTIF_LABELS: Record<StatutActif, string> = {

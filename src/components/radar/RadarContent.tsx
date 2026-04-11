@@ -10,14 +10,15 @@ import Link from 'next/link'
 
 const CLASSES: { value: ClasseActif | 'all'; label: string }[] = [
   { value: 'all', label: 'Tous' },
-  { value: 'hotel_existant', label: 'Hôtel' },
-  { value: 'hotel_distressed', label: 'Distressed' },
-  { value: 'marchand_biens', label: 'MdB' },
+  { value: 'hotel', label: 'Hôtel' },
+  { value: 'appart_hotel', label: 'Appart-hôtel' },
   { value: 'coliving', label: 'Coliving' },
   { value: 'self_stockage', label: 'Self-stockage' },
   { value: 'dark_kitchen', label: 'Dark Kitchen' },
   { value: 'parking_pl', label: 'Parking PL' },
   { value: 'camping', label: 'Camping' },
+  { value: 'auberge', label: 'Auberge' },
+  { value: 'gite', label: 'Gîte' },
 ]
 
 function KeyscoreBadge({ score }: { score: number }) {
@@ -117,7 +118,7 @@ export function RadarContent() {
                     {CLASSE_ACTIF_LABELS[opp.classe_actif]}
                   </span>
                   <h3 className="text-sm font-semibold text-white mt-2 truncate group-hover:text-brand-300 transition-colors">
-                    {opp.titre}
+                    {opp.nom}
                   </h3>
                 </div>
                 <KeyscoreBadge score={opp.keyscore} />
@@ -129,22 +130,28 @@ export function RadarContent() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-surface-border">
-                <div>
-                  <p className="text-xs text-slate-500 mb-0.5">Prix</p>
-                  <p className="text-sm font-semibold text-white">{formatCurrency(opp.prix_affiche, true)}</p>
-                </div>
-                {opp.rendement_brut_estime && (
+                {opp.prix_demande && (
                   <div>
-                    <p className="text-xs text-slate-500 mb-0.5">Rendement brut</p>
-                    <p className="text-sm font-semibold text-emerald-400">{formatPercent(opp.rendement_brut_estime)}</p>
+                    <p className="text-xs text-slate-500 mb-0.5">Prix</p>
+                    <p className="text-sm font-semibold text-white">{formatCurrency(opp.prix_demande, true)}</p>
                   </div>
                 )}
-                {opp.decote_vs_benchmark && (
+                {opp.nombre_chambres && (
                   <div>
-                    <p className="text-xs text-slate-500 mb-0.5">Décote marché</p>
-                    <p className={cn('text-sm font-semibold', opp.decote_vs_benchmark > 0 ? 'text-emerald-400' : 'text-red-400')}>
-                      {opp.decote_vs_benchmark > 0 ? '-' : '+'}{Math.abs(opp.decote_vs_benchmark).toFixed(1)}%
-                    </p>
+                    <p className="text-xs text-slate-500 mb-0.5">Chambres</p>
+                    <p className="text-sm font-semibold text-white">{opp.nombre_chambres}</p>
+                  </div>
+                )}
+                {opp.revpar_estime && (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-0.5">RevPAR estimé</p>
+                    <p className="text-sm font-semibold text-emerald-400">{formatCurrency(opp.revpar_estime)}</p>
+                  </div>
+                )}
+                {opp.taux_occupation_estime && (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-0.5">Taux occupation</p>
+                    <p className="text-sm font-semibold text-emerald-400">{opp.taux_occupation_estime}%</p>
                   </div>
                 )}
               </div>
