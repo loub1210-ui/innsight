@@ -1,8 +1,46 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, MapPin, TrendingUp, Train, Building2, Users, BedDouble, Euro } from 'lucide-react'
+import { Search, MapPin, TrendingUp, Train, Building2, Users, BedDouble, Euro, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
+
+// Sources de données par indicateur
+const SOURCES = {
+  revpar: {
+    label: 'RevPAR & Occupation',
+    sources: [
+      { nom: 'MKG Group – Observatoire hôtelier', url: 'https://www.mkg-group.com/fr/' },
+      { nom: 'In Extenso Tourisme – Baromètre', url: 'https://www.inextenso-tourisme.fr/' },
+    ],
+  },
+  prix_m2: {
+    label: 'Prix immobilier / m²',
+    sources: [
+      { nom: 'MeilleursAgents – Prix au m²', url: 'https://www.meilleursagents.com/prix-immobilier/' },
+      { nom: 'SeLoger – Estimation prix', url: 'https://www.seloger.com/prix-de-l-immo/' },
+    ],
+  },
+  tourisme: {
+    label: 'Fréquentation touristique',
+    sources: [
+      { nom: 'INSEE – Hébergements touristiques', url: 'https://www.insee.fr/fr/statistiques?taille=100&debut=0&theme=13' },
+      { nom: 'Atout France – Chiffres du tourisme', url: 'https://www.atout-france.fr/' },
+    ],
+  },
+  rendement: {
+    label: 'Rendement & Investissement',
+    sources: [
+      { nom: 'CBRE – Hôtels France', url: 'https://www.cbre.fr/services/secteurs/hotels' },
+      { nom: 'Cushman & Wakefield – Hospitality', url: 'https://www.cushmanwakefield.com/fr-fr/france/insights/hospitality' },
+    ],
+  },
+  population: {
+    label: 'Population & Démographie',
+    sources: [
+      { nom: 'INSEE – Populations légales', url: 'https://www.insee.fr/fr/statistiques/6683035' },
+    ],
+  },
+}
 
 // Données marché des grandes villes françaises (gares principales)
 // Sources indicatives : INSEE, Atout France, MKG Group
@@ -234,6 +272,47 @@ function TendanceBadge({ tendance }: { tendance: string }) {
   )
 }
 
+function SourcesPanel({ ville }: { ville: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="mt-3 pt-3 border-t border-surface-border">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-400 transition-colors w-full"
+      >
+        <ExternalLink className="w-3 h-3" />
+        <span>Sources des données</span>
+        {open ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          {Object.values(SOURCES).map(cat => (
+            <div key={cat.label}>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">{cat.label}</p>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                {cat.sources.map(s => (
+                  <a
+                    key={s.url}
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-brand-400 hover:text-brand-300 hover:underline transition-colors"
+                  >
+                    {s.nom} ↗
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+          <p className="text-[10px] text-slate-600 italic mt-1">
+            Données indicatives — croisement de sources publiques et professionnelles.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function SynthetiseurContent() {
   const [search, setSearch] = useState('')
   const [tri, setTri] = useState<Tri>('score')
@@ -360,6 +439,9 @@ export function SynthetiseurContent() {
                   <span className="text-white font-medium">{(v.touristes_annuels / 1000000).toFixed(1)}M</span>
                 </div>
               </div>
+
+              {/* Sources */}
+              <SourcesPanel ville={v.ville} />
             </div>
           ))}
         </div>
