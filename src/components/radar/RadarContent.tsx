@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'next/navigation'
 import { fetchOpportunites, type FiltresOpportunites } from '@/services/opportunites'
 import { CLASSE_ACTIF_LABELS, type ClasseActif } from '@/types'
 import { formatCurrency, formatPercent, cn } from '@/lib/utils'
-import { Search, SlidersHorizontal, TrendingUp, MapPin, ExternalLink } from 'lucide-react'
+import { Search, SlidersHorizontal, TrendingUp, MapPin, ExternalLink, X } from 'lucide-react'
 import Link from 'next/link'
 
 const CLASSES: { value: ClasseActif | 'all'; label: string }[] = [
@@ -32,14 +33,24 @@ function KeyscoreBadge({ score }: { score: number }) {
 }
 
 export function RadarContent() {
+  const searchParams = useSearchParams()
+  const villeParam = searchParams.get('ville')
+
   const [filtres, setFiltres] = useState<FiltresOpportunites>({})
   const [search, setSearch] = useState('')
   const [classeFilter, setClasseFilter] = useState<ClasseActif | 'all'>('all')
+  const [villeFilter, setVilleFilter] = useState<string | null>(villeParam)
+
+  // Sync ville filter when URL changes
+  useEffect(() => {
+    setVilleFilter(villeParam)
+  }, [villeParam])
 
   const activeFiltres: FiltresOpportunites = {
     ...filtres,
     ...(classeFilter !== 'all' && { classe_actif: classeFilter }),
     ...(search && { search }),
+    ...(villeFilter && { ville: villeFilter }),
   }
 
   const { data: opportunites = [], isLoading, error } = useQuery({
@@ -78,6 +89,23 @@ export function RadarContent() {
             </button>
           ))}
         </div>
+
+        {villeFilter && (
+          <div className="flex items-center gap-1.5 bg-brand-500/15 border border-brand-500/30 text-brand-300 px-3 py-1.5 rounded-lg text-xs font-medium">
+            <MapPin className="w-3 h-3" />
+            {villeFilter}
+            <button
+              onClick={() => {
+                setVilleFilter(null)
+                // Clean URL without reload
+                window.history.replaceState(null, '', '/radar')
+              }}
+              className="ml-1 hover:text-white transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 ml-auto">
           <span className="text-sm text-slate-400">

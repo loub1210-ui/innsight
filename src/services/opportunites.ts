@@ -8,6 +8,7 @@ export interface FiltresOpportunites {
   keyscore_min?: number
   prix_max?: number
   search?: string
+  ville?: string
 }
 
 export async function fetchOpportunites(filtres: FiltresOpportunites = {}): Promise<Opportunite[]> {
@@ -23,6 +24,7 @@ export async function fetchOpportunites(filtres: FiltresOpportunites = {}): Prom
   if (filtres.keyscore_min) query = query.gte('keyscore', filtres.keyscore_min)
   if (filtres.prix_max) query = query.lte('prix_demande', filtres.prix_max)
   if (filtres.search) query = query.ilike('nom', `%${filtres.search}%`)
+  if (filtres.ville) query = query.ilike('commune', `%${filtres.ville}%`)
 
   const { data, error } = await query.limit(100)
   if (error) throw error

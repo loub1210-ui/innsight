@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, MapPin, TrendingUp, Train, Building2, Users, BedDouble, Euro, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, MapPin, TrendingUp, Train, Building2, Users, BedDouble, Euro, ExternalLink, ChevronDown, ChevronUp, Radar } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
+import Link from 'next/link'
 
 // Sources de données par indicateur
 const SOURCES = {
@@ -272,39 +273,37 @@ function TendanceBadge({ tendance }: { tendance: string }) {
   )
 }
 
-function SourcesPanel({ ville }: { ville: string }) {
+function SourcesPanel() {
   const [open, setOpen] = useState(false)
   return (
-    <div className="mt-3 pt-3 border-t border-surface-border">
+    <div>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-400 transition-colors w-full"
+        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-400 transition-colors"
       >
         <ExternalLink className="w-3 h-3" />
-        <span>Sources des données</span>
-        {open ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
+        <span>Sources</span>
+        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
       </button>
       {open && (
-        <div className="mt-2 space-y-2">
+        <div className="mt-2 space-y-1.5 bg-surface/50 rounded-lg p-3 border border-surface-border">
           {Object.values(SOURCES).map(cat => (
-            <div key={cat.label}>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">{cat.label}</p>
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                {cat.sources.map(s => (
-                  <a
-                    key={s.url}
-                    href={s.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-brand-400 hover:text-brand-300 hover:underline transition-colors"
-                  >
-                    {s.nom} ↗
-                  </a>
-                ))}
-              </div>
+            <div key={cat.label} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span className="text-[10px] text-slate-500 font-medium min-w-[100px]">{cat.label}</span>
+              {cat.sources.map(s => (
+                <a
+                  key={s.url}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-brand-400 hover:text-brand-300 hover:underline transition-colors"
+                >
+                  {s.nom} ↗
+                </a>
+              ))}
             </div>
           ))}
-          <p className="text-[10px] text-slate-600 italic mt-1">
+          <p className="text-[10px] text-slate-600 italic pt-1">
             Données indicatives — croisement de sources publiques et professionnelles.
           </p>
         </div>
@@ -440,8 +439,17 @@ export function SynthetiseurContent() {
                 </div>
               </div>
 
-              {/* Sources */}
-              <SourcesPanel ville={v.ville} />
+              {/* Actions */}
+              <div className="mt-4 pt-3 border-t border-surface-border flex items-center justify-between">
+                <SourcesPanel />
+                <Link
+                  href={`/radar?ville=${encodeURIComponent(v.ville)}`}
+                  className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition-colors"
+                >
+                  <Radar className="w-3.5 h-3.5" />
+                  Voir les annonces
+                </Link>
+              </div>
             </div>
           ))}
         </div>
