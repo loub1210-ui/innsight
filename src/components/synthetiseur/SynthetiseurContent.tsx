@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Search, MapPin, TrendingUp, Train, Building2, Users, BedDouble, Euro, ExternalLink, ChevronDown, ChevronUp, Radar } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, MapPin, TrendingUp, Train, Building2, Users, BedDouble, Euro, ExternalLink, ChevronDown, ChevronUp, Radar, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -312,9 +312,42 @@ function SourcesPanel() {
   )
 }
 
+interface LiveData {
+  ville: string
+  prix_m2_dvf: number | null
+  nb_transactions_dvf: number
+  population_insee: number | null
+}
+
 export function SynthetiseurContent() {
   const [search, setSearch] = useState('')
   const [tri, setTri] = useState<Tri>('score')
+  const [liveData, setLiveData] = useState<Record<string, LiveData>>({})
+  const [loadingLive, setLoadingLive] = useState(false)
+  const [liveLoaded, setLiveLoaded] = useState(false)
+
+  // Fetch live data from APIs on mount
+  useEffect(() => {
+    async function fetchLiveData() {
+      setLoadingLive(true)
+      try {
+        const res = await fetch('/api/market-data/all')
+        if (res.ok) {
+          const data = await res.json()
+          const mapped: Record<string, LiveData> = {}
+          for (const v of data.villes) {
+            if (!v.error) mapped[v.ville] = v
+          }
+          setLiveData(mapped)
+          setLiveLoaded(true)
+        }
+      } catch {
+        // Silently fail, use indicative data
+      }
+      setLoadingLive(false)
+    }
+    fetchLiveData()
+  }, [])
 
   const villesFiltrees = VILLES_DATA
     .filter(v => {
@@ -365,9 +398,27 @@ export function SynthetiseurContent() {
           ))}
         </div>
 
-        <span className="text-sm text-slate-400 ml-auto">
-          {villesFiltrees.length} ville{villesFiltrees.length > 1 ? 's' : ''}
-        </span>
+        <div className="flex items-center gap-3 ml-auto">
+          {loadingLive ? (
+            <span className="flex items-center gap-1.5 text-xs text-amber-400">
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              Chargement API…
+            </span>
+          ) : liveLoaded ? (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-400">
+              <Wifi className="w-3 h-3" />
+              Données live (DVF + INSEE)
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-xs text-slate-500">
+              <WifiOff className="w-3 h-3" />
+              Données indicatives
+            </span>
+          )}
+          <span className="text-sm text-slate-400">
+            {villesFiltrees.length} ville{villesFiltrees.length > 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
       {/* Grid */}
@@ -420,24 +471,52 @@ export function SynthetiseurContent() {
               </div>
 
               {/* Détails */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-3 border-t border-surface-border text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Prix/m²</span>
-                  <span className="text-white font-medium">{v.prix_m2_moyen.toLocaleString('fr-FR')} €</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Chambre moy.</span>
-                  <span className="text-white font-medium">{v.prix_moyen_chambre} €/nuit</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Hôtels zone gare</span>
-                  <span className="text-white font-medium">{v.nb_hotels_zone_gare}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Touristes/an</span>
-                  <span className="text-white font-medium">{(v.touristes_annuels / 1000000).toFixed(1)}M</span>
-                </div>
-              </div>
+              {(() => {
+                const live = liveData[v.ville]
+                const prixM2 = live?.prix_m2_dvf ?? v.prix_m2_moyen
+                const prixM2IsLive = live?.prix_m2_dvf != null
+                const pop = live?.population_insee ?? v.population
+                const popIsLive = live?.population_insee != null
+                return (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-3 border-t border-surface-border text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Prix/m²</span>
+                      <span className="flex items-center gap-1">
+                        <span className="text-white font-medium">{prixM2.toLocaleString('fr-FR')} €</span>
+                        {prixM2IsLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Donnée DVF live" />}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Chambre moy.</span>
+                      <span className="text-white font-medium">{v.prix_moyen_chambre} €/nuit</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Hôtels zone gare</span>
+                      <span className="text-white font-medium">{v.nb_hotels_zone_gare}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Touristes/an</span>
+                      <span className="text-white font-medium">{(v.touristes_annuels / 1000000).toFixed(1)}M</span>
+                    </div>
+                    {live?.nb_transactions_dvf != null && live.nb_transactions_dvf > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Transactions DVF</span>
+                        <span className="flex items-center gap-1">
+                          <span className="text-white font-medium">{live.nb_transactions_dvf}</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Donnée live" />
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Population</span>
+                      <span className="flex items-center gap-1">
+                        <span className="text-white font-medium">{(pop / 1000).toFixed(0)}k</span>
+                        {popIsLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Donnée INSEE live" />}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Actions */}
               <div className="mt-4 pt-3 border-t border-surface-border flex items-center justify-between">

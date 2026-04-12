@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { fetchOpportunites, type FiltresOpportunites } from '@/services/opportunites'
 import { CLASSE_ACTIF_LABELS, type ClasseActif } from '@/types'
 import { formatCurrency, formatPercent, cn } from '@/lib/utils'
-import { Search, SlidersHorizontal, TrendingUp, MapPin, ExternalLink, X } from 'lucide-react'
+import { Search, SlidersHorizontal, TrendingUp, MapPin, ExternalLink, X, Plus } from 'lucide-react'
 import Link from 'next/link'
 
 const CLASSES: { value: ClasseActif | 'all'; label: string }[] = [
@@ -107,10 +107,17 @@ export function RadarContent() {
           </div>
         )}
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-3 ml-auto">
           <span className="text-sm text-slate-400">
             {isLoading ? '…' : `${opportunites.length} opportunité${opportunites.length > 1 ? 's' : ''}`}
           </span>
+          <Link
+            href="/radar/add"
+            className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Ajouter
+          </Link>
         </div>
       </div>
 
