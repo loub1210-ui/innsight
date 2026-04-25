@@ -69,95 +69,6 @@ create policy "Utilisateurs voient leurs propres opportunités"
   with check (auth.uid() = user_id);
 
 
--- ── Table : actifs_portefeuille ───────────────────────────────────────────────
--- Parc immobilier détenu (pilier PORTFOLIO)
-
-create table if not exists public.actifs_portefeuille (
-  id                uuid primary key default uuid_generate_v4(),
-  user_id           uuid references auth.users(id) on delete cascade not null,
-
-  -- Identification
-  nom               text not null,
-  commune           text not null,
-  dept_code         text not null,
-  region_code       text,
-  adresse           text,
-  surface_m2        numeric(8,2),
-  date_acquisition  date,
-
-  -- Classification
-  classe_actif      text not null check (classe_actif in (
-    'hotel', 'appart_hotel', 'camping', 'auberge', 'gite', 'villa',
-    'maison_hotes', 'coliving', 'self_stockage', 'dark_kitchen',
-    'parking_pl', 'immeuble', 'autre'
-  )),
-  statut            text not null default 'actif' check (statut in (
-    'actif', 'en_acquisition', 'en_renovation', 'vendu'
-  )),
-
-  -- Financiers acquisition
-  prix_acquisition  numeric(14,2) not null,
-  frais_notaire     numeric(14,2) not null default 0,
-  cout_travaux      numeric(14,2) not null default 0,
-  valeur_estimee    numeric(14,2),
-
-  -- Revenus & charges
-  revenus_annuels   numeric(14,2) not null default 0,
-  charges_annuelles numeric(14,2) not null default 0,
-  mensualite_credit numeric(14,2),
-
-  -- DPE & conformité
-  dpe_classe        text check (dpe_classe in ('A','B','C','D','E','F','G')),
-  huwart_conforme   boolean,
-  huwart_echeance   date,
-
-  notes             text,
-
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now()
-);
-
--- Index
-create index on public.actifs_portefeuille(user_id);
-create index on public.actifs_portefeuille(statut);
-create index on public.actifs_portefeuille(classe_actif);
-
--- RLS
-alter table public.actifs_portefeuille enable row level security;
-
-create policy "Utilisateurs voient leurs propres actifs"
-  on public.actifs_portefeuille for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-
--- ── Table : benchmarks_regionaux ─────────────────────────────────────────────
--- Données de benchmarks par région/département (lecture seule pour tous les users)
-
-create table if not exists public.benchmarks_regionaux (
-  id                uuid primary key default uuid_generate_v4(),
-  dept_code         text not null,
-  region_code       text,
-  classe_actif      text not null,
-  revpar_median     numeric(8,2),
-  rendement_median  numeric(5,2),
-  prix_m2_median    numeric(10,2),
-  taux_vacance_pct  numeric(5,2),
-  source            text,
-  annee_donnees     integer,
-  created_at        timestamptz not null default now()
-);
-
-create index on public.benchmarks_regionaux(dept_code, classe_actif);
-
--- Lecture publique pour les utilisateurs connectés
-alter table public.benchmarks_regionaux enable row level security;
-
-create policy "Lecture benchmarks pour utilisateurs connectés"
-  on public.benchmarks_regionaux for select
-  using (auth.role() = 'authenticated');
-
-
 -- ── Trigger : updated_at automatique ─────────────────────────────────────────
 
 create or replace function public.set_updated_at()
@@ -172,8 +83,49 @@ create trigger set_updated_at_opportunites
   before update on public.opportunites_radar
   for each row execute function public.set_updated_at();
 
-create trigger set_updated_at_actifs
-  before update on public.actifs_portefeuille
+
+-- ── Table : api_integrations ─────────────────────────────────────────────────
+-- Clés API que l'utilisateur configure depuis la page Settings.
+-- Les credentials sont stockés chiffrés (pgcrypto) ; jamais lus côté client.
+
+create extension if not exists pgcrypto;
+
+create table if not exists public.api_integrations (
+  id                uuid primary key default uuid_generate_v4(),
+  user_id           uuid references auth.users(id) on delete cascade not null,
+
+  -- Identifiant du service (cf. registry.ts)
+  service           text not null,
+
+  -- Credentials chiffrés (jsonb chiffré en bytea via pgp_sym_encrypt)
+  -- Schema : { api_key: "...", consumer_key: "...", ... }
+  credentials_enc   bytea,
+
+  -- Métadonnées
+  is_active         boolean not null default true,
+  last_test_at      timestamptz,
+  last_test_status  text check (last_test_status in ('ok', 'fail', 'untested')),
+  last_test_message text,
+  last_used_at      timestamptz,
+
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+
+  unique(user_id, service)
+);
+
+create index on public.api_integrations(user_id);
+create index on public.api_integrations(service);
+
+alter table public.api_integrations enable row level security;
+
+create policy "Utilisateurs gèrent leurs propres clés API"
+  on public.api_integrations for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create trigger set_updated_at_integrations
+  before update on public.api_integrations
   for each row execute function public.set_updated_at();
 
 
@@ -186,9 +138,4 @@ insert into public.opportunites_radar (user_id, nom, commune, dept_code, classe_
 values
   ('VOTRE_USER_ID', 'Hôtel du Commerce', 'Bordeaux', '33', 'hotel', 850000, 28, 72, 65, 78, 'nouvelle'),
   ('VOTRE_USER_ID', 'Camping Les Pins', 'Arcachon', '33', 'camping', 1200000, null, null, 70, 65, 'en_analyse');
-
--- Insérer un actif de demo
-insert into public.actifs_portefeuille (user_id, nom, commune, dept_code, classe_actif, statut, prix_acquisition, frais_notaire, cout_travaux, valeur_estimee, revenus_annuels, charges_annuelles, mensualite_credit, dpe_classe)
-values
-  ('VOTRE_USER_ID', 'Hôtel Le Bellevue', 'Biarritz', '64', 'hotel', 'actif', 2400000, 192000, 350000, 3100000, 280000, 85000, 12500, 'C');
 */

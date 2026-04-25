@@ -17,6 +17,8 @@ export type ClasseActif =
 
 export type StatutOpportunite = 'nouvelle' | 'en_analyse' | 'qualifiee' | 'archivee'
 
+export type ClasseDPE = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
+
 export interface Opportunite {
   id: string
   user_id: string
@@ -41,55 +43,6 @@ export interface Opportunite {
   updated_at: string
 }
 
-// ─── Actifs portefeuille (PORTFOLIO) ─────────────────────────────────────────
-
-export type StatutActif = 'actif' | 'en_acquisition' | 'en_renovation' | 'vendu'
-
-export type ClasseDPE = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'
-
-export interface ActifPortefeuille {
-  id: string
-  user_id: string
-  nom: string
-  commune: string
-  adresse: string | null
-  dept_code: string
-  region_code: string
-  classe_actif: ClasseActif
-  statut: StatutActif
-  surface_m2: number | null
-  date_acquisition: string | null
-  prix_acquisition: number
-  frais_notaire: number
-  cout_travaux: number
-  valeur_estimee: number | null
-  revenus_annuels: number
-  charges_annuelles: number
-  mensualite_credit: number | null
-  dpe_classe: ClasseDPE | null
-  huwart_conforme: boolean | null
-  huwart_echeance: string | null
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
-
-export type ActifPortefeuilleInsert = Omit<ActifPortefeuille, 'id' | 'user_id' | 'created_at' | 'updated_at'>
-export type ActifPortefeuilleUpdate = Partial<ActifPortefeuilleInsert>
-
-// ─── Benchmarks ───────────────────────────────────────────────────────────────
-
-export interface BenchmarkRegional {
-  id: string
-  region_code: string
-  dept_code: string | null
-  classe_actif: ClasseActif
-  prix_m2_p25: number
-  prix_m2_p50: number
-  prix_m2_p75: number
-  annee: number
-}
-
 // ─── Labels ───────────────────────────────────────────────────────────────────
 
 export const CLASSE_ACTIF_LABELS: Record<ClasseActif, string> = {
@@ -106,13 +59,6 @@ export const CLASSE_ACTIF_LABELS: Record<ClasseActif, string> = {
   parking_pl:     'Parking PL',
   immeuble:       'Immeuble',
   autre:          'Autre',
-}
-
-export const STATUT_ACTIF_LABELS: Record<StatutActif, string> = {
-  actif:          'Actif',
-  en_acquisition: 'En acquisition',
-  en_renovation:  'En rénovation',
-  vendu:          'Vendu',
 }
 
 export const DPE_COLORS: Record<ClasseDPE, string> = {

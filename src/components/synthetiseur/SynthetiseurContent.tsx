@@ -1,253 +1,42 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Search, MapPin, TrendingUp, Train, Building2, Users, BedDouble, Euro, ExternalLink, ChevronDown, ChevronUp, Radar, RefreshCw, Wifi, WifiOff } from 'lucide-react'
-import { cn, formatCurrency } from '@/lib/utils'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import {
+  Search,
+  Train,
+  Building2,
+  Calendar,
+  Euro,
+  Star,
+  Tent,
+  RefreshCw,
+  ChevronRight,
+  Sparkles,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import {
+  VILLES,
+  VILLES_PRIORITAIRES_HMA,
+  ratioHotelsParKm2,
+  ratioIndependantsParKm2,
+  ratioMiceParKm2,
+  ratioTouristesParKm2,
+  type VilleDetail,
+} from '@/data/villes'
 
-// Sources de données par indicateur
-const SOURCES = {
-  revpar: {
-    label: 'RevPAR & Occupation',
-    sources: [
-      { nom: 'MKG Group – Observatoire hôtelier', url: 'https://www.mkg-group.com/fr/' },
-      { nom: 'In Extenso Tourisme – Baromètre', url: 'https://www.inextenso-tourisme.fr/' },
-    ],
-  },
-  prix_m2: {
-    label: 'Prix immobilier / m²',
-    sources: [
-      { nom: 'MeilleursAgents – Prix au m²', url: 'https://www.meilleursagents.com/prix-immobilier/' },
-      { nom: 'SeLoger – Estimation prix', url: 'https://www.seloger.com/prix-de-l-immo/' },
-    ],
-  },
-  tourisme: {
-    label: 'Fréquentation touristique',
-    sources: [
-      { nom: 'INSEE – Hébergements touristiques', url: 'https://www.insee.fr/fr/statistiques?taille=100&debut=0&theme=13' },
-      { nom: 'Atout France – Chiffres du tourisme', url: 'https://www.atout-france.fr/' },
-    ],
-  },
-  rendement: {
-    label: 'Rendement & Investissement',
-    sources: [
-      { nom: 'CBRE – Hôtels France', url: 'https://www.cbre.fr/services/secteurs/hotels' },
-      { nom: 'Cushman & Wakefield – Hospitality', url: 'https://www.cushmanwakefield.com/fr-fr/france/insights/hospitality' },
-    ],
-  },
-  population: {
-    label: 'Population & Démographie',
-    sources: [
-      { nom: 'INSEE – Populations légales', url: 'https://www.insee.fr/fr/statistiques/6683035' },
-    ],
-  },
-}
-
-// Données marché des grandes villes françaises (gares principales)
-// Sources indicatives : INSEE, Atout France, MKG Group
-const VILLES_DATA = [
-  {
-    ville: 'Paris',
-    gare: 'Gare de Lyon / Gare du Nord',
-    region: 'Île-de-France',
-    dept: '75',
-    revpar_moyen: 125,
-    taux_occupation: 78,
-    prix_moyen_chambre: 160,
-    nb_hotels_zone_gare: 85,
-    prix_m2_moyen: 12500,
-    rendement_brut: 4.8,
-    tendance: 'hausse',
-    score_attractivite: 92,
-    population: 2161000,
-    touristes_annuels: 38000000,
-  },
-  {
-    ville: 'Lyon',
-    gare: 'Gare de Lyon Part-Dieu',
-    region: 'Auvergne-Rhône-Alpes',
-    dept: '69',
-    revpar_moyen: 82,
-    taux_occupation: 72,
-    prix_moyen_chambre: 114,
-    nb_hotels_zone_gare: 42,
-    prix_m2_moyen: 5200,
-    rendement_brut: 5.6,
-    tendance: 'hausse',
-    score_attractivite: 85,
-    population: 522969,
-    touristes_annuels: 6000000,
-  },
-  {
-    ville: 'Marseille',
-    gare: 'Gare Saint-Charles',
-    region: 'Provence-Alpes-Côte d\'Azur',
-    dept: '13',
-    revpar_moyen: 74,
-    taux_occupation: 68,
-    prix_moyen_chambre: 109,
-    nb_hotels_zone_gare: 35,
-    prix_m2_moyen: 3800,
-    rendement_brut: 6.1,
-    tendance: 'stable',
-    score_attractivite: 78,
-    population: 873076,
-    touristes_annuels: 5000000,
-  },
-  {
-    ville: 'Bordeaux',
-    gare: 'Gare Saint-Jean',
-    region: 'Nouvelle-Aquitaine',
-    dept: '33',
-    revpar_moyen: 78,
-    taux_occupation: 71,
-    prix_moyen_chambre: 110,
-    nb_hotels_zone_gare: 28,
-    prix_m2_moyen: 4600,
-    rendement_brut: 5.3,
-    tendance: 'hausse',
-    score_attractivite: 82,
-    population: 260958,
-    touristes_annuels: 4200000,
-  },
-  {
-    ville: 'Lille',
-    gare: 'Gare Lille-Flandres / Europe',
-    region: 'Hauts-de-France',
-    dept: '59',
-    revpar_moyen: 68,
-    taux_occupation: 66,
-    prix_moyen_chambre: 103,
-    nb_hotels_zone_gare: 32,
-    prix_m2_moyen: 3400,
-    rendement_brut: 5.9,
-    tendance: 'hausse',
-    score_attractivite: 76,
-    population: 236234,
-    touristes_annuels: 3500000,
-  },
-  {
-    ville: 'Toulouse',
-    gare: 'Gare Matabiau',
-    region: 'Occitanie',
-    dept: '31',
-    revpar_moyen: 71,
-    taux_occupation: 69,
-    prix_moyen_chambre: 103,
-    nb_hotels_zone_gare: 25,
-    prix_m2_moyen: 3900,
-    rendement_brut: 5.5,
-    tendance: 'stable',
-    score_attractivite: 74,
-    population: 504078,
-    touristes_annuels: 3800000,
-  },
-  {
-    ville: 'Nice',
-    gare: 'Gare de Nice-Ville',
-    region: 'Provence-Alpes-Côte d\'Azur',
-    dept: '06',
-    revpar_moyen: 95,
-    taux_occupation: 74,
-    prix_moyen_chambre: 128,
-    nb_hotels_zone_gare: 38,
-    prix_m2_moyen: 5800,
-    rendement_brut: 5.1,
-    tendance: 'hausse',
-    score_attractivite: 86,
-    population: 342669,
-    touristes_annuels: 5000000,
-  },
-  {
-    ville: 'Nantes',
-    gare: 'Gare de Nantes',
-    region: 'Pays de la Loire',
-    dept: '44',
-    revpar_moyen: 65,
-    taux_occupation: 67,
-    prix_moyen_chambre: 97,
-    nb_hotels_zone_gare: 22,
-    prix_m2_moyen: 4100,
-    rendement_brut: 5.4,
-    tendance: 'hausse',
-    score_attractivite: 73,
-    population: 320732,
-    touristes_annuels: 2800000,
-  },
-  {
-    ville: 'Strasbourg',
-    gare: 'Gare de Strasbourg',
-    region: 'Grand Est',
-    dept: '67',
-    revpar_moyen: 72,
-    taux_occupation: 70,
-    prix_moyen_chambre: 103,
-    nb_hotels_zone_gare: 30,
-    prix_m2_moyen: 3600,
-    rendement_brut: 5.7,
-    tendance: 'stable',
-    score_attractivite: 77,
-    population: 287228,
-    touristes_annuels: 3200000,
-  },
-  {
-    ville: 'Montpellier',
-    gare: 'Gare Saint-Roch',
-    region: 'Occitanie',
-    dept: '34',
-    revpar_moyen: 67,
-    taux_occupation: 66,
-    prix_moyen_chambre: 101,
-    nb_hotels_zone_gare: 20,
-    prix_m2_moyen: 3500,
-    rendement_brut: 5.8,
-    tendance: 'hausse',
-    score_attractivite: 75,
-    population: 299096,
-    touristes_annuels: 2500000,
-  },
-  {
-    ville: 'Rennes',
-    gare: 'Gare de Rennes',
-    region: 'Bretagne',
-    dept: '35',
-    revpar_moyen: 62,
-    taux_occupation: 65,
-    prix_moyen_chambre: 95,
-    nb_hotels_zone_gare: 18,
-    prix_m2_moyen: 3800,
-    rendement_brut: 5.2,
-    tendance: 'stable',
-    score_attractivite: 70,
-    population: 222485,
-    touristes_annuels: 2100000,
-  },
-  {
-    ville: 'Grenoble',
-    gare: 'Gare de Grenoble',
-    region: 'Auvergne-Rhône-Alpes',
-    dept: '38',
-    revpar_moyen: 58,
-    taux_occupation: 62,
-    prix_moyen_chambre: 94,
-    nb_hotels_zone_gare: 16,
-    prix_m2_moyen: 2800,
-    rendement_brut: 6.2,
-    tendance: 'stable',
-    score_attractivite: 68,
-    population: 158454,
-    touristes_annuels: 1800000,
-  },
-]
-
-type Tri = 'score' | 'revpar' | 'rendement' | 'prix_m2'
+type Tri = 'score' | 'mice' | 'hotels_km2' | 'adr' | 'rendement' | 'prix_m2'
 
 const TRI_OPTIONS: { value: Tri; label: string }[] = [
   { value: 'score', label: 'Score attractivité' },
-  { value: 'revpar', label: 'RevPAR' },
+  { value: 'mice', label: 'MICE / km²' },
+  { value: 'hotels_km2', label: 'Hôtels / km²' },
+  { value: 'adr', label: 'ADR' },
   { value: 'rendement', label: 'Rendement brut' },
-  { value: 'prix_m2', label: 'Prix/m² (croissant)' },
+  { value: 'prix_m2', label: 'Prix /m² (croissant)' },
 ]
+
+type FiltreEtoiles = 'toutes' | '2' | '3' | '4'
 
 function ScoreBadge({ score }: { score: number }) {
   const color = score >= 80 ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
@@ -260,137 +49,123 @@ function ScoreBadge({ score }: { score: number }) {
   )
 }
 
-function TendanceBadge({ tendance }: { tendance: string }) {
+function TendanceBadge({ tendance }: { tendance: VilleDetail['tendance_marche'] }) {
   return (
     <span className={cn(
-      'text-xs font-medium px-2 py-0.5 rounded-md',
+      'text-[10px] font-medium px-2 py-0.5 rounded-md',
       tendance === 'hausse' ? 'text-emerald-400 bg-emerald-500/10' :
       tendance === 'baisse' ? 'text-red-400 bg-red-500/10' :
-      'text-slate-400 bg-slate-500/10'
+      'text-slate-400 bg-slate-500/10',
     )}>
       {tendance === 'hausse' ? '↗ Hausse' : tendance === 'baisse' ? '↘ Baisse' : '→ Stable'}
     </span>
   )
 }
 
-function SourcesPanel() {
-  const [open, setOpen] = useState(false)
+function PrioritaireBadge() {
   return (
-    <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-brand-400 transition-colors"
-      >
-        <ExternalLink className="w-3 h-3" />
-        <span>Sources</span>
-        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-      </button>
-      {open && (
-        <div className="mt-2 space-y-1.5 bg-surface/50 rounded-lg p-3 border border-surface-border">
-          {Object.values(SOURCES).map(cat => (
-            <div key={cat.label} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span className="text-[10px] text-slate-500 font-medium min-w-[100px]">{cat.label}</span>
-              {cat.sources.map(s => (
-                <a
-                  key={s.url}
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-brand-400 hover:text-brand-300 hover:underline transition-colors"
-                >
-                  {s.nom} ↗
-                </a>
-              ))}
-            </div>
-          ))}
-          <p className="text-[10px] text-slate-600 italic pt-1">
-            Données indicatives — croisement de sources publiques et professionnelles.
-          </p>
-        </div>
-      )}
-    </div>
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-brand-300 bg-brand-500/15 border border-brand-500/30 px-1.5 py-0.5 rounded">
+      <Sparkles className="w-2.5 h-2.5" />
+      HMA
+    </span>
   )
-}
-
-interface LiveData {
-  ville: string
-  prix_m2_dvf: number | null
-  nb_transactions_dvf: number
-  population_insee: number | null
 }
 
 export function SynthetiseurContent() {
   const [search, setSearch] = useState('')
   const [tri, setTri] = useState<Tri>('score')
-  const [liveData, setLiveData] = useState<Record<string, LiveData>>({})
-  const [loadingLive, setLoadingLive] = useState(false)
-  const [liveLoaded, setLiveLoaded] = useState(false)
+  const [etoiles, setEtoiles] = useState<FiltreEtoiles>('toutes')
+  const [showCamping, setShowCamping] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastRefresh, setLastRefresh] = useState<string>(new Date().toLocaleString('fr-FR'))
 
-  // Fetch live data from APIs on mount
-  useEffect(() => {
-    async function fetchLiveData() {
-      setLoadingLive(true)
-      try {
-        const res = await fetch('/api/market-data/all')
-        if (res.ok) {
-          const data = await res.json()
-          const mapped: Record<string, LiveData> = {}
-          for (const v of data.villes) {
-            if (!v.error) mapped[v.ville] = v
-          }
-          setLiveData(mapped)
-          setLiveLoaded(true)
+  const villes = useMemo(() => {
+    return VILLES
+      .filter(v => {
+        if (!search) return true
+        const s = search.toLowerCase()
+        return (
+          v.ville.toLowerCase().includes(s) ||
+          v.gare_principale.toLowerCase().includes(s) ||
+          v.region.toLowerCase().includes(s)
+        )
+      })
+      .sort((a, b) => {
+        const aHma = VILLES_PRIORITAIRES_HMA.includes(a.slug) ? 1 : 0
+        const bHma = VILLES_PRIORITAIRES_HMA.includes(b.slug) ? 1 : 0
+        if (aHma !== bHma) return bHma - aHma
+        switch (tri) {
+          case 'score': return b.score_attractivite - a.score_attractivite
+          case 'mice': return ratioMiceParKm2(b) - ratioMiceParKm2(a)
+          case 'hotels_km2': return ratioHotelsParKm2(b) - ratioHotelsParKm2(a)
+          case 'adr': return b.adr_moyen - a.adr_moyen
+          case 'rendement': return b.rendement_brut - a.rendement_brut
+          case 'prix_m2': return a.prix_m2_immobilier - b.prix_m2_immobilier
+          default: return 0
         }
-      } catch {
-        // Silently fail, use indicative data
-      }
-      setLoadingLive(false)
-    }
-    fetchLiveData()
-  }, [])
+      })
+  }, [search, tri])
 
-  const villesFiltrees = VILLES_DATA
-    .filter(v => {
-      if (!search) return true
-      const s = search.toLowerCase()
-      return v.ville.toLowerCase().includes(s) || v.gare.toLowerCase().includes(s) || v.region.toLowerCase().includes(s)
-    })
-    .sort((a, b) => {
-      switch (tri) {
-        case 'score': return b.score_attractivite - a.score_attractivite
-        case 'revpar': return b.revpar_moyen - a.revpar_moyen
-        case 'rendement': return b.rendement_brut - a.rendement_brut
-        case 'prix_m2': return a.prix_m2_moyen - b.prix_m2_moyen
-        default: return 0
-      }
-    })
+  function handleRefresh() {
+    setRefreshing(true)
+    setTimeout(() => {
+      setLastRefresh(new Date().toLocaleString('fr-FR'))
+      setRefreshing(false)
+    }, 800)
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Filters bar */}
-      <div className="px-8 py-4 border-b border-surface-border flex items-center gap-4 flex-wrap">
+      <div className="px-8 py-4 border-b border-surface-border flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Rechercher une ville, gare, région…"
+            placeholder="Rechercher ville, gare, région…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full bg-surface border border-surface-border rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">Trier par :</span>
+        <div className="flex items-center gap-1 bg-surface-card border border-surface-border rounded-lg p-0.5">
+          {(['toutes', '2', '3', '4'] as FiltreEtoiles[]).map(e => (
+            <button
+              key={e}
+              onClick={() => setEtoiles(e)}
+              className={cn(
+                'px-2.5 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1',
+                etoiles === e ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-200',
+              )}
+            >
+              {e === 'toutes' ? 'Toutes' : <>{e}<Star className="w-3 h-3 fill-current" /></>}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setShowCamping(!showCamping)}
+          className={cn(
+            'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all',
+            showCamping
+              ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+              : 'bg-surface-card text-slate-400 border-surface-border hover:text-slate-200',
+          )}
+        >
+          <Tent className="w-3.5 h-3.5" />
+          Camping
+        </button>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
           {TRI_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => setTri(opt.value)}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                'px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all',
                 tri === opt.value
                   ? 'bg-brand-600 text-white'
-                  : 'bg-surface-card text-slate-400 hover:text-slate-200 border border-surface-border'
+                  : 'bg-surface-card text-slate-400 hover:text-slate-200 border border-surface-border',
               )}
             >
               {opt.label}
@@ -398,141 +173,140 @@ export function SynthetiseurContent() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3 ml-auto">
-          {loadingLive ? (
-            <span className="flex items-center gap-1.5 text-xs text-amber-400">
-              <RefreshCw className="w-3 h-3 animate-spin" />
-              Chargement API…
-            </span>
-          ) : liveLoaded ? (
-            <span className="flex items-center gap-1.5 text-xs text-emerald-400">
-              <Wifi className="w-3 h-3" />
-              Données live (DVF + INSEE)
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 text-xs text-slate-500">
-              <WifiOff className="w-3 h-3" />
-              Données indicatives
-            </span>
-          )}
-          <span className="text-sm text-slate-400">
-            {villesFiltrees.length} ville{villesFiltrees.length > 1 ? 's' : ''}
-          </span>
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-[11px] text-slate-500">MAJ : {lastRefresh}</span>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 bg-surface-card hover:bg-surface-hover border border-surface-border text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={cn('w-3.5 h-3.5', refreshing && 'animate-spin')} />
+            Rafraîchir
+          </button>
+          <span className="text-sm text-slate-400">{villes.length} villes</span>
         </div>
       </div>
 
-      {/* Grid */}
       <div className="flex-1 overflow-y-auto p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {villesFiltrees.map(v => (
-            <div
-              key={v.ville}
-              className="bg-surface-card border border-surface-border rounded-xl p-6 hover:border-brand-500/30 transition-all"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-bold text-white">{v.ville}</h3>
-                    <TendanceBadge tendance={v.tendance} />
-                  </div>
-                  <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-                    <Train className="w-3.5 h-3.5" />
-                    {v.gare}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{v.region} ({v.dept})</p>
-                </div>
-                <ScoreBadge score={v.score_attractivite} />
-              </div>
-
-              {/* KPIs */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="bg-surface border border-surface-border rounded-lg p-3">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Euro className="w-3 h-3 text-slate-500" />
-                    <p className="text-xs text-slate-500">RevPAR</p>
-                  </div>
-                  <p className="text-base font-bold text-white">{v.revpar_moyen} €</p>
-                </div>
-                <div className="bg-surface border border-surface-border rounded-lg p-3">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <BedDouble className="w-3 h-3 text-slate-500" />
-                    <p className="text-xs text-slate-500">Occupation</p>
-                  </div>
-                  <p className="text-base font-bold text-white">{v.taux_occupation}%</p>
-                </div>
-                <div className="bg-surface border border-surface-border rounded-lg p-3">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <TrendingUp className="w-3 h-3 text-slate-500" />
-                    <p className="text-xs text-slate-500">Rdt brut</p>
-                  </div>
-                  <p className="text-base font-bold text-emerald-400">{v.rendement_brut}%</p>
-                </div>
-              </div>
-
-              {/* Détails */}
-              {(() => {
-                const live = liveData[v.ville]
-                const prixM2 = live?.prix_m2_dvf ?? v.prix_m2_moyen
-                const prixM2IsLive = live?.prix_m2_dvf != null
-                const pop = live?.population_insee ?? v.population
-                const popIsLive = live?.population_insee != null
-                return (
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-3 border-t border-surface-border text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500">Prix/m²</span>
-                      <span className="flex items-center gap-1">
-                        <span className="text-white font-medium">{prixM2.toLocaleString('fr-FR')} €</span>
-                        {prixM2IsLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Donnée DVF live" />}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Chambre moy.</span>
-                      <span className="text-white font-medium">{v.prix_moyen_chambre} €/nuit</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Hôtels zone gare</span>
-                      <span className="text-white font-medium">{v.nb_hotels_zone_gare}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Touristes/an</span>
-                      <span className="text-white font-medium">{(v.touristes_annuels / 1000000).toFixed(1)}M</span>
-                    </div>
-                    {live?.nb_transactions_dvf != null && live.nb_transactions_dvf > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Transactions DVF</span>
-                        <span className="flex items-center gap-1">
-                          <span className="text-white font-medium">{live.nb_transactions_dvf}</span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Donnée live" />
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500">Population</span>
-                      <span className="flex items-center gap-1">
-                        <span className="text-white font-medium">{(pop / 1000).toFixed(0)}k</span>
-                        {popIsLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Donnée INSEE live" />}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* Actions */}
-              <div className="mt-4 pt-3 border-t border-surface-border flex items-center justify-between">
-                <SourcesPanel />
-                <Link
-                  href={`/radar?ville=${encodeURIComponent(v.ville)}`}
-                  className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition-colors"
-                >
-                  <Radar className="w-3.5 h-3.5" />
-                  Voir les annonces
-                </Link>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+          {villes.map(v => (
+            <VilleCard key={v.slug} ville={v} etoilesFilter={etoiles} />
           ))}
         </div>
       </div>
+    </div>
+  )
+}
+
+function VilleCard({ ville: v, etoilesFilter }: { ville: VilleDetail; etoilesFilter: FiltreEtoiles }) {
+  const isPrioritaire = VILLES_PRIORITAIRES_HMA.includes(v.slug)
+  const hotelsByStars = etoilesFilter === '2' ? v.nb_hotels_2etoiles
+    : etoilesFilter === '3' ? v.nb_hotels_3etoiles
+    : etoilesFilter === '4' ? v.nb_hotels_4etoiles
+    : v.nb_hotels_total
+
+  return (
+    <Link
+      href={`/synthetiseur/${v.slug}`}
+      className="bg-surface-card border border-surface-border rounded-xl p-5 hover:border-brand-500/40 transition-all group block"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <h3 className="text-base font-bold text-white truncate group-hover:text-brand-300">{v.ville}</h3>
+            {isPrioritaire && <PrioritaireBadge />}
+            <TendanceBadge tendance={v.tendance_marche} />
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+            <Train className="w-3 h-3" />
+            <span className="truncate">{v.gare_principale}</span>
+            <span>·</span>
+            <span>{v.region} ({v.dept})</span>
+          </div>
+        </div>
+        <ScoreBadge score={v.score_attractivite} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <Ratio
+          icon={<Building2 className="w-3 h-3" />}
+          label={etoilesFilter === 'toutes' ? 'Hôtels / km²' : `${etoilesFilter}★ / km²`}
+          value={(hotelsByStars / v.surface_km2).toFixed(2)}
+          sub={`${hotelsByStars} hôtels`}
+        />
+        <Ratio
+          icon={<Building2 className="w-3 h-3" />}
+          label="Indé. / km²"
+          value={ratioIndependantsParKm2(v).toFixed(2)}
+          sub={`${v.nb_hotels_independants} indé.`}
+          highlight
+        />
+        <Ratio
+          icon={<Calendar className="w-3 h-3" />}
+          label="MICE / an"
+          value={v.mice_evenements_an.toString()}
+          sub={`${v.mice_visiteurs_an}k visiteurs`}
+          accent
+        />
+        <Ratio
+          icon={<Euro className="w-3 h-3" />}
+          label="ADR moyen"
+          value={`${v.adr_moyen} €`}
+          sub={`RevPAR ${v.revpar_moyen} €`}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pt-3 border-t border-surface-border text-[11px]">
+        <Detail label="Touristes / km²" value={`${(ratioTouristesParKm2(v) / 1000).toFixed(1)}k`} />
+        <Detail label="Note Booking" value={`${v.note_booking_moyenne}/10`} />
+        <Detail label="Prix /m²" value={`${v.prix_m2_immobilier.toLocaleString('fr-FR')} €`} />
+        <Detail label="Rdt brut" value={`${v.rendement_brut}%`} accent />
+        <Detail label="Entreprises" value={v.nb_entreprises.toLocaleString('fr-FR')} />
+        <Detail label="Population" value={`${(v.population / 1000).toFixed(0)}k`} />
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-surface-border flex items-center justify-between">
+        <div className="flex gap-1 text-[10px]">
+          <span className="text-slate-500">2★</span><span className="text-slate-300">{v.nb_hotels_2etoiles}</span>
+          <span className="text-slate-600">·</span>
+          <span className="text-slate-500">3★</span><span className="text-slate-300">{v.nb_hotels_3etoiles}</span>
+          <span className="text-slate-600">·</span>
+          <span className="text-slate-500">4★</span><span className="text-slate-300">{v.nb_hotels_4etoiles}</span>
+        </div>
+        <span className="text-[11px] text-brand-400 group-hover:text-brand-300 flex items-center gap-1 font-medium">
+          Voir la fiche <ChevronRight className="w-3 h-3" />
+        </span>
+      </div>
+    </Link>
+  )
+}
+
+function Ratio({
+  icon, label, value, sub, accent, highlight,
+}: { icon: React.ReactNode; label: string; value: string; sub?: string; accent?: boolean; highlight?: boolean }) {
+  return (
+    <div className={cn(
+      'rounded-lg p-2.5 border',
+      highlight
+        ? 'bg-brand-500/10 border-brand-500/30'
+        : accent
+          ? 'bg-emerald-500/5 border-emerald-500/20'
+          : 'bg-surface border-surface-border',
+    )}>
+      <div className={cn('flex items-center gap-1 text-[10px]', accent ? 'text-emerald-400' : 'text-slate-500')}>
+        {icon}<span className="uppercase tracking-wider">{label}</span>
+      </div>
+      <p className={cn('text-base font-bold mt-0.5', accent ? 'text-emerald-300' : 'text-white')}>{value}</p>
+      {sub && <p className="text-[10px] text-slate-500">{sub}</p>}
+    </div>
+  )
+}
+
+function Detail({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-slate-500">{label}</span>
+      <span className={cn('font-medium', accent ? 'text-emerald-400' : 'text-white')}>{value}</span>
     </div>
   )
 }
