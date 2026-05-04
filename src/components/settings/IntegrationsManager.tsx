@@ -15,10 +15,14 @@ import {
   EyeOff,
   ChevronDown,
   ChevronRight,
+  ShoppingCart,
+  Tag,
+  BookOpen,
 } from 'lucide-react'
 import {
   INTEGRATIONS,
   CATEGORY_LABELS,
+  CATEGORY_DESCRIPTIONS,
   PRICING_LABELS,
   getIntegrationsByCategory,
   type IntegrationDefinition,
@@ -46,24 +50,52 @@ export function IntegrationsManager({ initialStatuses }: Props) {
   const statusFor = (service: string): IntegrationStatus | undefined =>
     statuses.find(s => s.service === service)
 
+  // Compteurs
   const totalRequired = INTEGRATIONS.filter(i => i.required).length
-  const configuredRequired = INTEGRATIONS.filter(i => i.required && (statusFor(i.service)?.is_configured || i.publicApi)).length
+  const configuredRequired = INTEGRATIONS.filter(i =>
+    i.required && (i.publicApi || statusFor(i.service)?.is_configured),
+  ).length
+  const totalAll = INTEGRATIONS.length
+  const configuredAll = INTEGRATIONS.filter(i =>
+    i.publicApi || statusFor(i.service)?.is_configured,
+  ).length
+
+  const progressRequired = Math.round((configuredRequired / totalRequired) * 100)
+  const progressAll = Math.round((configuredAll / totalAll) * 100)
 
   return (
     <section className="bg-surface-card border border-surface-border rounded-xl p-6">
-      <div className="flex items-start justify-between mb-1">
-        <div>
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-1">
+        <div className="flex-1 min-w-0">
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
             <Plug className="w-4 h-4 text-brand-400" />
-            Intégrations API
+            Console d'intégrations API
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Configure les sources de données qu'InnSight interroge. {configuredRequired}/{totalRequired} clés requises configurées.
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            Renseigne les clés API une par une. Chaque intégration a son lien direct pour souscrire,
+            ses tarifs indicatifs et un test de connexion immédiat. Les clés sont chiffrées avant
+            stockage et jamais exposées au navigateur.
           </p>
+        </div>
+
+        <div className="flex flex-col gap-1.5 min-w-[200px]">
+          <ProgressBar
+            label="Clés requises"
+            value={configuredRequired}
+            total={totalRequired}
+            percent={progressRequired}
+            critical
+          />
+          <ProgressBar
+            label="Toutes les clés"
+            value={configuredAll}
+            total={totalAll}
+            percent={progressAll}
+          />
         </div>
       </div>
 
-      <div className="mt-5 space-y-5">
+      <div className="mt-6 space-y-6">
         {(Object.keys(grouped) as IntegrationCategory[]).map(cat => (
           <CategoryGroup
             key={cat}
@@ -75,6 +107,27 @@ export function IntegrationsManager({ initialStatuses }: Props) {
         ))}
       </div>
     </section>
+  )
+}
+
+function ProgressBar({
+  label, value, total, percent, critical,
+}: { label: string; value: number; total: number; percent: number; critical?: boolean }) {
+  const color = percent === 100
+    ? 'bg-emerald-500'
+    : critical && percent < 100
+      ? 'bg-amber-500'
+      : 'bg-brand-500'
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+        <span>{label}</span>
+        <span className="font-mono">{value}/{total}</span>
+      </div>
+      <div className="h-1.5 bg-surface rounded-full overflow-hidden">
+        <div className={cn('h-full transition-all', color)} style={{ width: `${percent}%` }} />
+      </div>
+    </div>
   )
 }
 
@@ -90,23 +143,29 @@ function CategoryGroup({
   onChanged: () => void
 }) {
   const [open, setOpen] = useState(true)
+  const configured = integrations.filter(i => i.publicApi || getStatus(i.service)?.is_configured).length
   return (
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500 font-medium mb-2 hover:text-slate-300"
+        className="w-full flex items-center gap-2 mb-2 group text-left"
       >
-        {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-        {CATEGORY_LABELS[category]}
-        <span className="text-slate-600">·</span>
-        <span className="text-slate-600">{integrations.length}</span>
+        {open ? <ChevronDown className="w-3.5 h-3.5 text-slate-500" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500" />}
+        <h3 className="text-xs uppercase tracking-wider text-slate-300 font-semibold group-hover:text-white">
+          {CATEGORY_LABELS[category]}
+        </h3>
+        <span className="text-[10px] text-slate-500">·</span>
+        <span className="text-[10px] text-slate-500">{configured}/{integrations.length} configuré(s)</span>
       </button>
       {open && (
-        <div className="space-y-2">
-          {integrations.map(def => (
-            <IntegrationCard key={def.service} def={def} status={getStatus(def.service)} onChanged={onChanged} />
-          ))}
-        </div>
+        <>
+          <p className="text-[11px] text-slate-500 mb-3 ml-5">{CATEGORY_DESCRIPTIONS[category]}</p>
+          <div className="space-y-2">
+            {integrations.map(def => (
+              <IntegrationCard key={def.service} def={def} status={getStatus(def.service)} onChanged={onChanged} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
@@ -122,21 +181,32 @@ function IntegrationCard({
   onChanged: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const isConfigured = status?.is_configured || def.publicApi
+  const isConfigured = def.publicApi || (status?.is_configured ?? false)
 
   return (
-    <div className="bg-surface border border-surface-border rounded-lg overflow-hidden">
+    <div className={cn(
+      'bg-surface border rounded-lg overflow-hidden transition-colors',
+      isConfigured ? 'border-emerald-500/20' : def.required ? 'border-amber-500/20' : 'border-surface-border',
+    )}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 p-3 hover:bg-surface-hover transition-colors text-left"
+        className="w-full flex items-start gap-3 p-3.5 hover:bg-surface-hover transition-colors text-left"
       >
-        <StatusDot configured={isConfigured} testStatus={status?.last_test_status ?? null} required={def.required} />
+        <div className="pt-0.5">
+          <StatusDot configured={isConfigured} testStatus={status?.last_test_status ?? null} required={def.required} />
+        </div>
+
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white truncate">{def.label}</span>
-            {def.required && (
-              <span className="text-[10px] uppercase font-bold text-amber-400 border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 rounded">
-                requis
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold text-white truncate">{def.label}</span>
+            {def.required && !isConfigured && (
+              <span className="text-[10px] uppercase font-bold text-amber-300 border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                À configurer
+              </span>
+            )}
+            {isConfigured && (
+              <span className="text-[10px] uppercase font-bold text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                Configuré
               </span>
             )}
             <span className={cn(
@@ -148,9 +218,30 @@ function IntegrationCard({
               {PRICING_LABELS[def.pricing]}
             </span>
           </div>
-          <p className="text-xs text-slate-500 truncate mt-0.5">{def.usage}</p>
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">{def.usage}</p>
+          <div className="flex items-center gap-3 mt-1.5">
+            <span className="flex items-center gap-1 text-[11px] text-slate-500">
+              <Tag className="w-3 h-3" />
+              {def.priceLabel}
+            </span>
+          </div>
         </div>
-        <ChevronDown className={cn('w-4 h-4 text-slate-500 transition-transform flex-shrink-0', open && 'rotate-180')} />
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {!def.publicApi && !isConfigured && (
+            <a
+              href={def.signupUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="inline-flex items-center gap-1 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors"
+            >
+              <ShoppingCart className="w-3 h-3" />
+              Souscrire
+            </a>
+          )}
+          <ChevronDown className={cn('w-4 h-4 text-slate-500 transition-transform', open && 'rotate-180')} />
+        </div>
       </button>
 
       {open && (
@@ -169,11 +260,11 @@ function StatusDot({
   testStatus: 'ok' | 'fail' | 'untested' | null
   required: boolean
 }) {
-  if (testStatus === 'ok') return <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-  if (testStatus === 'fail') return <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-  if (configured) return <CheckCircle2 className="w-4 h-4 text-slate-500 flex-shrink-0" />
-  if (required) return <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-  return <div className="w-2 h-2 rounded-full bg-slate-600 ml-1 flex-shrink-0" />
+  if (testStatus === 'ok') return <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+  if (testStatus === 'fail') return <XCircle className="w-4 h-4 text-red-400" />
+  if (configured) return <CheckCircle2 className="w-4 h-4 text-emerald-400/60" />
+  if (required) return <AlertCircle className="w-4 h-4 text-amber-400" />
+  return <div className="w-2 h-2 rounded-full bg-slate-600 ml-1" />
 }
 
 function IntegrationForm({
@@ -193,18 +284,22 @@ function IntegrationForm({
   async function save() {
     setBusy('save')
     setFeedback(null)
-    const res = await fetch(`/api/integrations/${def.service}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields }),
-    })
-    const json = await res.json().catch(() => ({})) as { error?: string }
-    if (res.ok) {
-      setFeedback({ ok: true, msg: 'Clé enregistrée (chiffrée).' })
-      setFields({})
-      onChanged()
-    } else {
-      setFeedback({ ok: false, msg: json.error ?? `Erreur HTTP ${res.status}` })
+    try {
+      const res = await fetch(`/api/integrations/${def.service}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }),
+      })
+      const json = await res.json().catch(() => ({})) as { error?: string }
+      if (res.ok) {
+        setFeedback({ ok: true, msg: 'Clé enregistrée (chiffrée).' })
+        setFields({})
+        onChanged()
+      } else {
+        setFeedback({ ok: false, msg: json.error ?? `Erreur HTTP ${res.status}` })
+      }
+    } catch (e) {
+      setFeedback({ ok: false, msg: (e as Error).message })
     }
     setBusy(null)
   }
@@ -212,15 +307,19 @@ function IntegrationForm({
   async function test() {
     setBusy('test')
     setFeedback(null)
-    const body = Object.keys(fields).length ? { fields } : undefined
-    const res = await fetch(`/api/integrations/${def.service}/test`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    const json = await res.json() as { ok: boolean; message: string }
-    setFeedback({ ok: json.ok, msg: json.message })
-    onChanged()
+    try {
+      const body = Object.keys(fields).length ? { fields } : undefined
+      const res = await fetch(`/api/integrations/${def.service}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+      const json = await res.json() as { ok: boolean; message: string }
+      setFeedback({ ok: json.ok, msg: json.message })
+      onChanged()
+    } catch (e) {
+      setFeedback({ ok: false, msg: (e as Error).message })
+    }
     setBusy(null)
   }
 
@@ -235,13 +334,31 @@ function IntegrationForm({
   }
 
   return (
-    <div className="px-4 pb-4 pt-1 border-t border-surface-border space-y-3">
-      <div className="flex items-center gap-3 text-xs text-slate-500 pt-2">
-        <a href={def.docUrl} target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300 inline-flex items-center gap-1">
-          Documentation <ExternalLink className="w-3 h-3" />
-        </a>
-        {def.notes && <span className="text-slate-500">· {def.notes}</span>}
-      </div>
+    <div className="px-4 pb-4 pt-1 border-t border-surface-border space-y-3 bg-surface-card/50">
+      {/* Étapes claires */}
+      {!def.publicApi && (
+        <div className="bg-surface rounded-lg p-3 border border-surface-border">
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-brand-400 mb-2">
+            Comment souscrire
+          </p>
+          <ol className="space-y-1.5 text-xs text-slate-300 list-decimal list-inside">
+            <li>
+              <a href={def.signupUrl} target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300 underline inline-flex items-center gap-1">
+                Créer un compte ici <ExternalLink className="w-3 h-3" />
+              </a>
+              {' '}— {def.priceLabel}
+            </li>
+            {def.setupNotes && <li className="text-slate-400">{def.setupNotes}</li>}
+            <li>Coller la / les clé(s) ci-dessous et cliquer sur <span className="font-semibold text-white">Tester</span>.</li>
+          </ol>
+          <div className="flex items-center gap-3 mt-3 text-[11px]">
+            <a href={def.docUrl} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-300 inline-flex items-center gap-1">
+              <BookOpen className="w-3 h-3" />
+              Documentation technique
+            </a>
+          </div>
+        </div>
+      )}
 
       {status?.last_test_at && (
         <p className="text-[11px] text-slate-500">
@@ -254,7 +371,7 @@ function IntegrationForm({
 
       {def.publicApi ? (
         <p className="text-xs text-slate-400 italic">
-          API publique — aucune clé requise. Clique sur « Tester » pour vérifier que le service répond.
+          API publique gouvernementale — aucune clé requise. Clique sur « Tester » pour vérifier que le service répond.
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -263,16 +380,16 @@ function IntegrationForm({
             const revealedNow = revealed[f.name]
             return (
               <div key={f.name}>
-                <label className="block text-xs text-slate-400 mb-1">
+                <label className="block text-xs text-slate-300 mb-1 font-medium">
                   {f.label}{f.required && <span className="text-rose-400 ml-1">*</span>}
                 </label>
                 <div className="relative">
                   <input
                     type={isPwd && !revealedNow ? 'password' : 'text'}
                     value={fields[f.name] ?? ''}
-                    placeholder={f.placeholder ?? (status?.is_configured ? '••••••••• (déjà configuré)' : '')}
+                    placeholder={f.placeholder ?? (status?.is_configured ? '••••••••• (déjà configuré)' : 'Coller la valeur ici…')}
                     onChange={e => setFields({ ...fields, [f.name]: e.target.value })}
-                    className="w-full bg-surface-card border border-surface-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono pr-9"
+                    className="w-full bg-surface border border-surface-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono pr-9"
                   />
                   {isPwd && (
                     <button
@@ -301,7 +418,7 @@ function IntegrationForm({
         </div>
       )}
 
-      <div className="flex items-center gap-2 pt-1">
+      <div className="flex items-center gap-2 pt-1 flex-wrap">
         {!def.publicApi && (
           <button
             onClick={save}
@@ -320,6 +437,18 @@ function IntegrationForm({
           {busy === 'test' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TestTube2 className="w-3.5 h-3.5" />}
           Tester
         </button>
+        {!def.publicApi && (
+          <a
+            href={def.signupUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-brand-400 hover:text-brand-300 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <ShoppingCart className="w-3.5 h-3.5" />
+            Page de souscription
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
         {status?.is_configured && !def.publicApi && (
           <button
             onClick={remove}
